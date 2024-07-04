@@ -12,7 +12,9 @@ import com.whispercppdemo.ui.auth.AuthScreen
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainScreenViewModel by viewModels { MainScreenViewModel.factory() }
-
+    private lateinit var server: DatabaseServer
+    
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -25,5 +27,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Start the HTTP server
+        server = DatabaseServer(this, 8080)
+        server.start()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        server.stop()
     }
 }

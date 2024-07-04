@@ -5,11 +5,23 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
-class AuthViewModel : ViewModel() {
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+class AuthViewModel(
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+) : ViewModel() {
+    private val hardcodedEmail = "test@t.com"
+    private val hardcodedPassword = "111111"
+
+    private fun isOfflineLogin(email: String, password: String): Boolean {
+        return email == hardcodedEmail && password == hardcodedPassword
+    }
 
     fun login(email: String, password: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (isOfflineLogin(email, password)) {
+            onSuccess()  // Login with hardcoded credentials successful
+            return
+        }
+
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {

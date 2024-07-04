@@ -43,6 +43,8 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
     var recordingTime by mutableStateOf(0L)
         private set
     var fhirRecord by mutableStateOf("")
+    var isMuted by mutableStateOf(false) // Add isMuted state
+        private set
     private val modelsPath = File(application.filesDir, "models")
     private val samplesPath = File(application.filesDir, "samples")
     private var recorder: Recorder = Recorder()
@@ -56,10 +58,13 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
 
     // Other properties and methods...
 
-    private fun navigateToFhirScreen(fhirResponse: String) {
+     fun navigateToFhirScreen(fhirResponse: String) {
         fhirRecord = fhirResponse
         _navigateToFhirScreen.value = fhirResponse
     }
+
+    private val _navigateFromFhirScreen = MutableLiveData<Boolean>()
+    val navigateFromFhirScreen: LiveData<Boolean> = _navigateFromFhirScreen
 
     fun doneNavigating() {
         _navigateToFhirScreen.value = null
@@ -69,6 +74,10 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         viewModelScope.launch {
             loadData()
         }
+    }
+
+    fun setNavigateFromFhirScreen(flag: Boolean) {
+        _navigateFromFhirScreen.value = flag
     }
 
     private suspend fun loadData() {
@@ -82,7 +91,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         }
     }
 
-    private suspend fun printMessage(msg: String) = withContext(Dispatchers.Main) {
+     suspend fun printMessage(msg: String) = withContext(Dispatchers.Main) {
         dataLog += msg
     }
 
@@ -124,6 +133,20 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         mediaPlayer?.start()
     }
 
+    private val _text = MutableLiveData<String>()
+    val text: LiveData<String> = _text
+
+    private val _updatedFhirText = MutableLiveData<String>()
+    val updatedFhirText: LiveData<String> = _updatedFhirText
+
+    private val _completeParagraphText = MutableLiveData<String>()
+    val completeParagraphText: LiveData<String> = _completeParagraphText
+
+
+    fun setCompleteParagraphText(text: String) {
+        _completeParagraphText.value = text
+    }
+
     fun transcribeAudio(file: File) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -149,15 +172,20 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
                     printMessage("$cleanText\n")
                     status = "Transcription Successful"
                 }
-
+                delay(2000)
                 cleanText?.let {
+                    withContext(Dispatchers.Main) {
+                        status = "Converting..."
+                    }
                     convertTextToFhir(it, { fhirResponse ->
                         viewModelScope.launch(Dispatchers.Main) {
                             navigateToFhirScreen(fhirResponse)
+                            status = "Conversion Successful"
                         }
                     }, { error ->
                         viewModelScope.launch(Dispatchers.Main) {
-                            printMessage("FHIR Conversion Failed: $error\n")
+//                            printMessage("FHIR Conversion Failed: $error\n")
+                            status = "Conversion Failed"
                         }
                     })
                 }
@@ -207,7 +235,10 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
             status = "Idle"
         }
     }
-
+    fun toggleMute() {
+        isMuted = !isMuted
+        recorder.setMuted(isMuted)
+    }
     private fun startRecordingTimer() {
         val startTime = SystemClock.elapsedRealtime()
         recordingJob = viewModelScope.launch(Dispatchers.Default) {
@@ -254,7 +285,6 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
             val json = JSONObject()
             json.put("text", text)
             val requestBody = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
-
             val request = Request.Builder()
                 .url("http://10.0.2.2:5000/convert") // Use 10.0.2.2 to access localhost from Android emulator
                 .post(requestBody)

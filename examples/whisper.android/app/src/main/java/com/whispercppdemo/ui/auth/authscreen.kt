@@ -74,8 +74,8 @@ fun AuthScreen(viewModel: AuthViewModel = viewModel(), onAuthSuccess: () -> Unit
                 } else {
                     if (isLogin) {
                         viewModel.login(email, password, {
-                            dialogMessage = "Login successful"
-                            showDialog = true
+//                            dialogMessage = "Login successful"
+//                            showDialog = true
                             onAuthSuccess()
                         }, {
                             dialogMessage = it

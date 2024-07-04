@@ -17,9 +17,10 @@ class Recorder {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     )
     private var recorder: AudioRecordThread? = null
+     val isMuted = AtomicBoolean(false) // Add mute state
 
     suspend fun startRecording(outputFile: File, onError: (Exception) -> Unit) = withContext(scope.coroutineContext) {
-        recorder = AudioRecordThread(outputFile, onError)
+        recorder = AudioRecordThread(outputFile, onError, isMuted)
         recorder?.start()
     }
 
@@ -29,13 +30,17 @@ class Recorder {
         recorder?.join()
         recorder = null
     }
+
+    fun setMuted(muted: Boolean) {
+        isMuted.set(muted)
+    }
 }
 
 private class AudioRecordThread(
     private val outputFile: File,
-    private val onError: (Exception) -> Unit
-) :
-    Thread("AudioRecorder") {
+    private val onError: (Exception) -> Unit,
+    private val isMuted: AtomicBoolean // Pass mute state
+) : Thread("AudioRecorder") {
     private var quit = AtomicBoolean(false)
 
     @SuppressLint("MissingPermission")
@@ -64,8 +69,10 @@ private class AudioRecordThread(
                 while (!quit.get()) {
                     val read = audioRecord.read(buffer, 0, buffer.size)
                     if (read > 0) {
-                        for (i in 0 until read) {
-                            allData.add(buffer[i])
+                        if (!isMuted.get()) {
+                            for (i in 0 until read) {
+                                allData.add(buffer[i])
+                            }
                         }
                     } else {
                         throw java.lang.RuntimeException("audioRecord.read returned $read")

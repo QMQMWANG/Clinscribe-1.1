@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905984768125",
+    "project_id": "whisperlogin-30a0c",
+    "storage_bucket": "whisperlogin-30a0c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905984768125:android:5779cc0ef866a53af79914",
+        "android_client_info": {
+          "package_name": "com.whispercppdemo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDn70d2tWPkaBvJQXJUbenMxkoAxhMy0QQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

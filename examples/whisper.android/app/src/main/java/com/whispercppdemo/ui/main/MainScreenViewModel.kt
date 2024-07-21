@@ -3,6 +3,7 @@ package com.whispercppdemo.ui.main
 import android.app.Application
 import android.content.Context
 import android.media.MediaPlayer
+import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,11 +17,17 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.whispercppdemo.media.decodeWaveFile
 import com.whispercppdemo.recorder.Recorder
 import com.whispercpp.whisper.WhisperContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.File
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import java.util.concurrent.TimeUnit
 
 private const val LOG_TAG = "MainScreenViewModel"
 
@@ -31,27 +38,40 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         private set
     var isRecording by mutableStateOf(false)
         private set
-
+    var status by mutableStateOf("Idle")
+        private set
+    var recordingTime by mutableStateOf(0L)
+        private set
+    var fhirRecord by mutableStateOf("")
     private val modelsPath = File(application.filesDir, "models")
     private val samplesPath = File(application.filesDir, "samples")
     private var recorder: Recorder = Recorder()
     private var whisperContext: com.whispercpp.whisper.WhisperContext? = null
     private var mediaPlayer: MediaPlayer? = null
     private var recordedFile: File? = null
+    private var recordingJob: Job? = null
+
+    private val _navigateToFhirScreen = MutableLiveData<String?>()
+    val navigateToFhirScreen: LiveData<String?> get() = _navigateToFhirScreen
+
+    // Other properties and methods...
+
+    private fun navigateToFhirScreen(fhirResponse: String) {
+        fhirRecord = fhirResponse
+        _navigateToFhirScreen.value = fhirResponse
+    }
+
+    fun doneNavigating() {
+        _navigateToFhirScreen.value = null
+    }
 
     init {
         viewModelScope.launch {
-            printSystemInfo()
             loadData()
         }
     }
 
-    private suspend fun printSystemInfo() {
-        printMessage(String.format("System Info: %s\n", com.whispercpp.whisper.WhisperContext.getSystemInfo()))
-    }
-
     private suspend fun loadData() {
-        printMessage("Loading data...\n")
         try {
             copyAssets()
             loadBaseModel()
@@ -69,44 +89,18 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
     private suspend fun copyAssets() = withContext(Dispatchers.IO) {
         modelsPath.mkdirs()
         samplesPath.mkdirs()
-        //application.copyData("models", modelsPath, ::printMessage)
         application.copyData("samples", samplesPath, ::printMessage)
-        printMessage("All data copied to working directory.\n")
     }
 
     private suspend fun loadBaseModel() = withContext(Dispatchers.IO) {
-        printMessage("Loading model...\n")
         val models = application.assets.list("models/")
         if (models != null) {
             whisperContext = com.whispercpp.whisper.WhisperContext.createContextFromAsset(application.assets, "models/" + models[0])
-            printMessage("Loaded model ${models[0]}.\n")
         }
-
-        //val firstModel = modelsPath.listFiles()!!.first()
-        //whisperContext = WhisperContext.createContextFromFile(firstModel.absolutePath)
-    }
-
-    fun benchmark() = viewModelScope.launch {
-        runBenchmark(6)
     }
 
     fun transcribeSample() = viewModelScope.launch {
         transcribeAudio(getFirstSample())
-    }
-
-    private suspend fun runBenchmark(nthreads: Int) {
-        if (!canTranscribe) {
-            return
-        }
-
-        canTranscribe = false
-
-        printMessage("Running benchmark. This will take minutes...\n")
-        whisperContext?.benchMemory(nthreads)?.let{ printMessage(it) }
-        printMessage("\n")
-        whisperContext?.benchGgmlMulMat(nthreads)?.let{ printMessage(it) }
-
-        canTranscribe = true
     }
 
     private suspend fun getFirstSample(): File = withContext(Dispatchers.IO) {
@@ -130,28 +124,55 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
         mediaPlayer?.start()
     }
 
-    private suspend fun transcribeAudio(file: File) {
-        if (!canTranscribe) {
-            return
+    fun transcribeAudio(file: File) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (!canTranscribe) {
+                    return@launch
+                }
+
+                canTranscribe = false
+                status = "Transcribing..."
+
+                val data = readAudioSamples(file)
+                val start = System.currentTimeMillis()
+                val text = whisperContext?.transcribeData(data)
+                val elapsed = System.currentTimeMillis() - start
+
+                val cleanText = text?.replace(Regex("\\[.*?\\]"), "")
+                    ?.replace(":", "")
+                    ?.replace("\n", " ")
+                    ?.replace("\\s+".toRegex(), " ")
+                    ?.trim()
+
+                withContext(Dispatchers.Main) {
+                    printMessage("$cleanText\n")
+                    status = "Transcription Successful"
+                }
+
+                cleanText?.let {
+                    convertTextToFhir(it, { fhirResponse ->
+                        viewModelScope.launch(Dispatchers.Main) {
+                            navigateToFhirScreen(fhirResponse)
+                        }
+                    }, { error ->
+                        viewModelScope.launch(Dispatchers.Main) {
+                            printMessage("FHIR Conversion Failed: $error\n")
+                        }
+                    })
+                }
+            } catch (e: Exception) {
+                Log.w(LOG_TAG, e)
+                withContext(Dispatchers.Main) {
+                    printMessage("${e.localizedMessage}\n")
+                    status = "Transcription Failed"
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    canTranscribe = true
+                }
+            }
         }
-
-        canTranscribe = false
-
-        try {
-            printMessage("Reading wave samples... ")
-            val data = readAudioSamples(file)
-            printMessage("${data.size / (16000 / 1000)} ms\n")
-            printMessage("Transcribing data...\n")
-            val start = System.currentTimeMillis()
-            val text = whisperContext?.transcribeData(data)
-            val elapsed = System.currentTimeMillis() - start
-            printMessage("Done ($elapsed ms): \n$text\n")
-        } catch (e: Exception) {
-            Log.w(LOG_TAG, e)
-            printMessage("${e.localizedMessage}\n")
-        }
-
-        canTranscribe = true
     }
 
     fun toggleRecord() = viewModelScope.launch {
@@ -159,6 +180,7 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
             if (isRecording) {
                 recorder.stopRecording()
                 isRecording = false
+                recordingJob?.cancel()
                 recordedFile?.let { transcribeAudio(it) }
             } else {
                 stopPlayback()
@@ -168,16 +190,34 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
                         withContext(Dispatchers.Main) {
                             printMessage("${e.localizedMessage}\n")
                             isRecording = false
+                            status = "Idle"
                         }
                     }
                 }
                 isRecording = true
+                status = "Recording..."
+                recordingTime = 0L
+                startRecordingTimer()
                 recordedFile = file
             }
         } catch (e: Exception) {
             Log.w(LOG_TAG, e)
             printMessage("${e.localizedMessage}\n")
             isRecording = false
+            status = "Idle"
+        }
+    }
+
+    private fun startRecordingTimer() {
+        val startTime = SystemClock.elapsedRealtime()
+        recordingJob = viewModelScope.launch(Dispatchers.Default) {
+            while (isActive) {
+                val elapsedTime = SystemClock.elapsedRealtime() - startTime
+                withContext(Dispatchers.Main) {
+                    recordingTime = elapsedTime
+                }
+                delay(1000L)
+            }
         }
     }
 
@@ -202,24 +242,61 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
             }
         }
     }
-}
 
-private suspend fun Context.copyData(
+    private fun convertTextToFhir(text: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val client = OkHttpClient.Builder()
+                .callTimeout(200, TimeUnit.SECONDS)
+                .connectTimeout(200, TimeUnit.SECONDS)
+                .writeTimeout(200, TimeUnit.SECONDS)
+                .readTimeout(200, TimeUnit.SECONDS)
+                .build()
+            val json = JSONObject()
+            json.put("text", text)
+            val requestBody = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("http://10.0.2.2:5000/convert") // Use 10.0.2.2 to access localhost from Android emulator
+                .post(requestBody)
+                .build()
+
+            try {
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    Log.d(LOG_TAG, "FHIR conversion successful: $responseBody")
+                    withContext(Dispatchers.Main) {
+                        onSuccess(responseBody ?: "Conversion failed: empty response")
+                    }
+                } else {
+                    val errorMessage = "Conversion failed: ${response.message}"
+                    Log.e(LOG_TAG, errorMessage)
+                    withContext(Dispatchers.Main) {
+                        onFailure(errorMessage)
+                    }
+                }
+            } catch (e: IOException) {
+                val errorMessage = "Conversion failed: ${e.localizedMessage}"
+                Log.e(LOG_TAG, errorMessage)
+                withContext(Dispatchers.Main) {
+                    onFailure(errorMessage)
+                }
+            }
+        }
+    }}
+
+    private suspend fun Context.copyData(
     assetDirName: String,
     destDir: File,
     printMessage: suspend (String) -> Unit
 ) = withContext(Dispatchers.IO) {
     assets.list(assetDirName)?.forEach { name ->
         val assetPath = "$assetDirName/$name"
-        Log.v(LOG_TAG, "Processing $assetPath...")
         val destination = File(destDir, name)
-        Log.v(LOG_TAG, "Copying $assetPath to $destination...")
-        printMessage("Copying $name...\n")
         assets.open(assetPath).use { input ->
             destination.outputStream().use { output ->
                 input.copyTo(output)
             }
         }
-        Log.v(LOG_TAG, "Copied $assetPath to $destination")
     }
 }

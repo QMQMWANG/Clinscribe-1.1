@@ -82,7 +82,7 @@ private fun MainScreen(
         snackbarHost = { SnackbarHost(hostState = scaffoldState.snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Clinsribe 1.1") },
+                title = { Text("Clinscribe 1.1") },
                 backgroundColor = blue,
                 contentColor = Color.White,
                 actions = {

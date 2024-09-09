@@ -277,10 +277,10 @@ class MainScreenViewModel(private val application: Application) : ViewModel() {
     private fun convertTextToFhir(text: String, onSuccess: (String) -> Unit, onFailure: (String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val client = OkHttpClient.Builder()
-                .callTimeout(200, TimeUnit.SECONDS)
-                .connectTimeout(200, TimeUnit.SECONDS)
-                .writeTimeout(200, TimeUnit.SECONDS)
-                .readTimeout(200, TimeUnit.SECONDS)
+                .callTimeout(2000, TimeUnit.SECONDS)
+                .connectTimeout(2000, TimeUnit.SECONDS)
+                .writeTimeout(2000, TimeUnit.SECONDS)
+                .readTimeout(2000, TimeUnit.SECONDS)
                 .build()
             val json = JSONObject()
             json.put("text", text)

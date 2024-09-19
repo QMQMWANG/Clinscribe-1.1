@@ -65,7 +65,6 @@ Before starting, ensure that you have the following software installed:
     ```
 4. Once the dependencies are installed, run the `ollama_server.py` script by clicking the **Run** icon in VSCode. If the server is successfully started, you should see an output indicating that the Flask server is running.
 
-    ![Successful Ollama Server Startup in VSCode](images/running_py.png)
 
 ## Cloning and Setting Up the Android Application
 ### Cloning the Repository
@@ -100,12 +99,11 @@ The application provides two login modes:
 2. **Stop Recording:** Tap `Stop recording` to end the session. The transcribed text will be sent to the Ollama server for conversion into FHIR records.
 3. **Viewing FHIR JSON Records:** The generated FHIR records will automatically appear on the `FHIR Records` page, where you can review, edit, and store them into the database.
 
-    ![FHIR Records Page](images/running_py.png)
 
 4. **Converting FHIR Records into a Clinical Summary:** Tap the `Convert into Clinical Summary` button to send the FHIR records to the Ollama server, where they will be transformed into a clinical summary. The summary will be displayed on the `Clinical Summary` page, where you can further edit it as needed.
 5. **Managing FHIR Records:** Navigate to the `Manage FHIR` screen to search, edit, and delete stored FHIR records directly within the application.
 
-    ![Workflow Screens](images/f2.png)
+
 
 ## Exporting Data
 ### Exporting Transcribed Clinical Conversations and Clinical Summaries
@@ -132,5 +130,8 @@ The application provides two login modes:
 - **[Prerequisite Setup Video](https://youtu.be/k7C0ZB1e5yY):** A detailed guide on setting up the prerequisites.
 - **[Demo Video](https://youtu.be/iKyS6HUqGzc):** A comprehensive walkthrough of the application.
 
-
+## Contact Information
+For any queries or support, please contact:  
+**Joe Wang**  
+Email: [Joewangg@hotmail.com](mailto:Joewangg@hotmail.com)
 

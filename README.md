@@ -23,11 +23,11 @@
 
 ## Introduction
 
-**Clinscribe v1.1** is an AI-driven medical transcription Android application designed to assist healthcare professionals in efficiently recording, processing, and managing clinical data. This application leverages the state-of-the-art **Whisper-tiny model** from [whisper.cpp](https://github.com/ggerganov/whisper.cpp) to transcribe conversations into structured FHIR records and generate clinical summaries.
+**Clinscribe v1.1** is an AI-driven medical transcription Android application designed to assist healthcare professionals in efficiently recording, processing, and managing clinical data. This application leverages the state-of-the-art **whisper-tiny model** from [whisper.cpp](https://github.com/ggerganov/whisper.cpp) to transcribe conversations into structured FHIR records and generate clinical summaries.
 
 ## Features
 
-- **Real-time Transcription:** Record and transcribe clinical conversations on the go using the **Whisper-tiny model**, which offers efficient and lightweight transcription capabilities.
+- **Real-time Transcription:** Record and transcribe clinical conversations on the go using the **whisper-tiny model**, which offers efficient and lightweight transcription capabilities.
 - **FHIR Integration:** Automatically convert transcriptions into FHIR JSON records.
 - **Clinical Summaries:** Generate clinical summaries from FHIR records.
 - **Data Management:** Edit, store, and manage FHIR records within the app.

@@ -32,6 +32,12 @@
 - **Clinical Summaries:** Generate clinical summaries from FHIR records.
 - **Data Management:** Edit, store, and manage FHIR records within the app.
 - **Export Options:** Export transcriptions, summaries, and FHIR records in various formats.
+- 
+![App Login Screen](s2.png)
+*Login Screen*
+![App Main Screen](s1.png)
+*Transcription Successful Screen*
+
 
 
 ## Prerequisite Setup

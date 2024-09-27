@@ -32,7 +32,6 @@
 - **Clinical Summaries:** Generate clinical summaries from FHIR records.
 - **Data Management:** Edit, store, and manage FHIR records within the app.
 - **Export Options:** Export transcriptions, summaries, and FHIR records in various formats.
-- 
 
 
 
@@ -99,6 +98,12 @@ The application provides two login modes:
   - **Password:** `111111`
 
 > **Note:** It is recommended to wait a few seconds after opening the application to ensure that it has fully initialized before attempting to log in.
+
+### Login Screen and Main Screen
+<p align="center">
+  <img src="s2.png" alt="Login Screen" width="290"/>
+  <img src="s1.png" alt="Main Screen" height="600"/>
+</p>
 
 ### Workflow for Recording, Processing, and Managing Clinical Data
 1. **Start Recording:** Tap the `Start recording` button to begin capturing the conversation.
